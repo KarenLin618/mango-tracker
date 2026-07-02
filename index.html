@@ -105,7 +105,7 @@
   .thumb{width:100%;height:120px;object-fit:cover;border-radius:9px;display:block;cursor:zoom-in;background:#f2efe5}
   .photo-actions{display:flex;gap:6px;margin-top:6px}
   .photo-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;font:inherit;font-size:12px;font-weight:500;
-    padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--muted);cursor:pointer;text-align:center}
+    padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--muted);cursor:pointer;text-align:center;text-decoration:none}
   .photo-btn:hover{color:var(--ink);border-color:var(--mango)}
   .photo-btn.danger:hover{color:var(--alert);border-color:var(--alert)}
   .photo-empty{display:flex;align-items:center;justify-content:center;width:100%;height:120px;border:1.5px dashed var(--line);
@@ -283,8 +283,9 @@
           <template v-if="m.has_photo">
             <img class="thumb" :src="photoUrl(m)" @click="viewPhoto(m)" alt="芒果照片">
             <div class="photo-actions">
+              <a class="photo-btn sm" :href="downloadUrl(m)" :download="downloadName(m)">下載</a>
               <label class="photo-btn sm">更換
-                <input type="file" accept="image/*" capture="environment" @change="onPhotoSelect(m,$event)" hidden>
+                <input type="file" accept="image/*" @change="onPhotoSelect(m,$event)" hidden>
               </label>
               <button class="photo-btn sm danger" @click="removePhoto(m)">移除</button>
             </div>
@@ -292,7 +293,7 @@
           <label v-else class="photo-empty" :class="{busy:m._busy}">
             <span v-if="m._busy">處理中…</span>
             <span v-else>📷 拍照 / 上傳</span>
-            <input type="file" accept="image/*" capture="environment" @change="onPhotoSelect(m,$event)" hidden>
+            <input type="file" accept="image/*" @change="onPhotoSelect(m,$event)" hidden>
           </label>
         </div>
 
@@ -575,6 +576,8 @@ createApp({
 
     // ---------- 照片 ----------
     photoUrl(m){ return `/api/mango/${m.id}/photo?v=${m._pv||0}`; },
+    downloadUrl(m){ return `/api/mango/${m.id}/photo?dl=1&v=${m._pv||0}`; },
+    downloadName(m){ return `mango-${m.seq}.jpg`; },
     viewPhoto(m){ this.lightbox = this.photoUrl(m); },
     // 前端壓縮：長邊縮到 maxDim、轉 JPEG，處理手機 EXIF 方向
     async compressImage(file, maxDim=900, quality=0.7){

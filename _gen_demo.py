@@ -164,6 +164,8 @@ createApp({
 
     // ---- 照片（示範模式：讀進記憶體，不上傳）----
     photoUrl(m){ return m._photoData||''; },
+    downloadUrl(m){ return m._photoData||''; },
+    downloadName(m){ return `mango-${m.seq}.jpg`; },
     viewPhoto(m){ this.lightbox=this.photoUrl(m); },
     async compressImage(file, maxDim=900, quality=0.7){
       let bitmap;

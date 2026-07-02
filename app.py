@@ -284,13 +284,18 @@ def api_mango(mango_id):
 @app.route("/api/mango/<int:mango_id>/photo", methods=["GET"])
 def api_photo_get(mango_id):
     conn = get_conn()
-    row = q_one(conn, "SELECT photo, photo_mime FROM mango WHERE id = %s", (mango_id,))
+    row = q_one(conn, "SELECT seq, photo, photo_mime FROM mango WHERE id = %s", (mango_id,))
     conn.close()
     if row is None or row["photo"] is None:
         return "", 404
     data = bytes(row["photo"])  # sqlite 回 bytes、psycopg2 回 memoryview，都轉成 bytes
-    resp = Response(data, mimetype=row["photo_mime"] or "image/jpeg")
+    mime = row["photo_mime"] or "image/jpeg"
+    resp = Response(data, mimetype=mime)
     resp.headers["Cache-Control"] = "public, max-age=31536000"
+    # 帶 ?dl=1 時，要求瀏覽器下載（手機才會存到「檔案」而非只開圖）
+    if request.args.get("dl"):
+        ext = "png" if "png" in mime else "jpg"
+        resp.headers["Content-Disposition"] = f'attachment; filename="mango-{row["seq"]}.{ext}"'
     return resp
 
 
