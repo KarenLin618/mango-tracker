@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>芒果催熟排程 · 使用說明</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FBFAF3; --panel:#FFFFFF; --ink:#26241E; --muted:#8A8577; --line:#EAE6D9;
+    --mango:#F0803C; --mango-deep:#D96520;
+    --leaf:#3E7A4B; --ripe:#E8582C; --cold:#1F86A6; --frozen:#6C63C4; --done:#B4AE9E;
+    --alert:#D62828; --alert-bg:#FDECEC;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans TC",system-ui,sans-serif;line-height:1.65;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:28px 18px 90px}
+  a{color:var(--mango-deep)}
+
+  /* Hero */
+  .hero{text-align:center;padding:14px 0 26px}
+  .hero .mk{font-size:52px;line-height:1}
+  h1{font-family:"Noto Serif TC",serif;font-weight:700;font-size:30px;margin:10px 0 6px;letter-spacing:.5px}
+  .hero p{color:var(--muted);margin:0;font-size:15px}
+
+  /* 核心原則 */
+  .principle{background:var(--ink);color:#fff;border-radius:16px;padding:22px 24px;margin:8px 0 26px;text-align:center}
+  .principle .k{font-family:"Noto Serif TC",serif;font-size:20px;font-weight:700;letter-spacing:1px;margin-bottom:6px}
+  .principle .k .hi{color:var(--mango)}
+  .principle .d{font-size:13.5px;color:#D9D4C6;line-height:1.7}
+
+  /* 區塊 */
+  section{margin-bottom:30px}
+  .eyebrow{font-size:11px;letter-spacing:2.5px;color:var(--mango-deep);font-weight:700;text-transform:uppercase;margin-bottom:6px}
+  h2{font-family:"Noto Serif TC",serif;font-size:20px;margin:0 0 14px}
+
+  /* 步驟 */
+  .step{display:flex;gap:16px;padding:16px 0;border-bottom:1px solid var(--line)}
+  .step:last-child{border-bottom:0}
+  .step .num{flex:none;width:40px;height:40px;border-radius:50%;background:var(--mango);color:#fff;
+    font-family:"Fraunces",serif;font-size:20px;font-weight:600;display:flex;align-items:center;justify-content:center}
+  .step h3{margin:2px 0 4px;font-size:16px;font-weight:700}
+  .step p{margin:0;font-size:14px;color:#57534a}
+  .step .tip{font-size:12.5px;color:var(--muted);margin-top:5px}
+
+  /* 卡片容器 */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px 22px}
+
+  /* 互動示範 */
+  .demo{display:grid;grid-template-columns:210px 1fr;gap:22px;align-items:start}
+  .demo-card{border:1px solid var(--line);border-radius:14px;background:#fff;padding:14px;position:relative;overflow:hidden;transition:box-shadow .2s}
+  .demo-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--barcolor,var(--leaf));transition:background .25s}
+  .demo-card.eaten{opacity:.6}
+  .demo-card.alert{border-color:var(--alert);box-shadow:0 0 0 1px var(--alert) inset}
+  .dc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .dc-id{font-family:"Fraunces",serif;font-size:20px;font-weight:600}
+  .dc-id .hash{color:var(--muted);font-size:14px}
+  .pill{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;color:#fff;transition:background .25s}
+  .thumb-demo{width:100%;height:96px;border-radius:9px;background:
+    linear-gradient(135deg,#F6B24A,#E8582C);display:flex;align-items:center;justify-content:center;font-size:34px;margin-bottom:10px}
+  select.dc-select{width:100%;font:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;margin-bottom:10px;background:#fff}
+  .dc-eat{font-size:12.5px;color:var(--muted);display:flex;justify-content:space-between;padding:2px 0}
+  .dc-eat b{color:var(--ink);font-weight:500}
+  .dc-count{margin-top:9px;font-size:13px;font-weight:700}
+  .dc-count.ok{color:var(--cold)} .dc-count.warn{color:var(--alert)} .dc-count.neutral{color:var(--muted)}
+  .badge{display:inline-block;background:var(--alert-bg);color:var(--alert);font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;margin-right:5px}
+  .demo-explain h3{margin:0 0 4px;font-size:15px}
+  .demo-explain p{margin:0 0 10px;font-size:14px;color:#57534a}
+  .demo-explain .hintbox{background:#FFF6EE;border-left:3px solid var(--mango);border-radius:0 8px 8px 0;padding:9px 12px;font-size:13px}
+
+  /* 狀態說明 */
+  .states{display:grid;gap:10px}
+  .state-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border:1px solid var(--line);border-radius:11px;background:#fff}
+  .swatch{width:14px;height:34px;border-radius:4px;flex:none}
+  .state-row .name{font-weight:700;font-size:14px;width:64px;flex:none}
+  .state-row .meaning{font-size:13.5px;color:#57534a}
+
+  /* 兩欄小卡 */
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .mini{background:#fff;border:1px solid var(--line);border-radius:12px;padding:15px 16px}
+  .mini .ic{font-size:22px}
+  .mini h3{margin:6px 0 4px;font-size:15px}
+  .mini p{margin:0;font-size:13px;color:#57534a}
+
+  /* 提醒 */
+  .remind{background:var(--alert-bg);border:1px solid #F3C9C9;border-radius:12px;padding:15px 18px}
+  .remind h3{margin:0 0 8px;font-size:15px;color:var(--alert)}
+  .remind ul{margin:0;padding-left:20px;font-size:13.5px;color:#7a3030}
+  .remind li{margin:4px 0}
+
+  .cta{text-align:center;margin-top:20px}
+  .btn{display:inline-block;font:inherit;font-size:15px;font-weight:700;text-decoration:none;background:var(--mango);color:#fff;padding:13px 30px;border-radius:11px;transition:filter .15s}
+  .btn:hover{filter:brightness(1.05)}
+  .foot{text-align:center;color:var(--muted);font-size:12px;margin-top:20px;line-height:1.7}
+
+  @media(max-width:560px){
+    h1{font-size:25px}.hero .mk{font-size:44px}
+    .demo{grid-template-columns:1fr}
+    .duo{grid-template-columns:1fr}
+    .card{padding:16px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="mk">🥭</div>
+    <h1>芒果催熟排程 · 使用說明</h1>
+    <p>幫你追蹤每一顆芒果，剛好在想吃的日子熟到最好</p>
+  </div>
+
+  <div class="principle">
+    <div class="k">硬的<span class="hi">別冰</span> ・ 熟了<span class="hi">就冰</span> ・ 照順序吃</div>
+    <div class="d">硬芒果放冰箱會「寒害」熟不透、長黑斑；一旦變軟就立刻冰起來「定格」，<br>再靠這個工具排出目標日該吃哪幾顆。記住這句話就對了。</div>
+  </div>
+
+  <!-- 快速上手 -->
+  <section>
+    <div class="eyebrow">快速上手</div>
+    <h2>三步驟就會用</h2>
+    <div class="card">
+      <div class="step">
+        <div class="num">1</div>
+        <div>
+          <h3>新增一個排程計畫，填基本資料</h3>
+          <p>第一次打開先點最上方的「＋ 新增計畫」，填「計畫名稱、收到日、想開始吃的目標日、數量」。建立後，看板就會長出對應顆數的芒果卡片。</p>
+          <div class="tip">冷藏、室溫可放天數已預設好（愛文），一般不用動；名稱之後也能改。</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">2</div>
+        <div>
+          <h3>每天看一下、更新狀態</h3>
+          <p>哪顆變軟了，就把那張卡片的狀態從「硬」改成「熟」；決定冰起來就改「已冷藏」。日期會自動幫你帶今天，也可以自己改。</p>
+          <div class="tip">想留紀錄的話，還能幫每顆拍一張照片。</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">3</div>
+        <div>
+          <h3>照「食用計畫」吃</h3>
+          <p>中間的建議面板會自動排出「該先吃哪幾顆」，並提醒快到期的。到目標日照著吃就不會浪費。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 互動示範 -->
+  <section>
+    <div class="eyebrow">動手玩玩看</div>
+    <h2>切換狀態，看卡片怎麼變</h2>
+    <div class="card">
+      <div class="demo">
+        <div class="demo-card" id="dcard">
+          <div class="dc-head">
+            <div class="dc-id"><span class="hash">#</span>1</div>
+            <span class="pill" id="dpill" style="background:var(--leaf)">硬</span>
+          </div>
+          <div class="thumb-demo">🥭</div>
+          <select class="dc-select" id="dsel">
+            <option value="hard">硬（催熟中）</option>
+            <option value="ripe">熟（室溫）</option>
+            <option value="refrigerated">已冷藏</option>
+            <option value="frozen">已冷凍（切塊）</option>
+            <option value="eaten">已吃</option>
+          </select>
+          <div class="dc-eat" id="deat" style="display:none"><span>最佳賞味</span><b id="deatv">—</b></div>
+          <div class="dc-count neutral" id="dcount">放冷氣房催熟中</div>
+        </div>
+
+        <div class="demo-explain">
+          <h3 id="dtitle">現在是「硬」</h3>
+          <p id="ddesc">還沒熟的芒果先放冷氣房催熟，這時候<strong>不要冰</strong>。卡片左邊是綠色，代表催熟中。</p>
+          <div class="hintbox" id="dhint">👆 試著把上面的下拉選單改成「熟」或「已冷藏」，看看顏色和倒數天數怎麼變化。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 五種狀態 -->
+  <section>
+    <div class="eyebrow">狀態顏色</div>
+    <h2>五種狀態代表什麼</h2>
+    <div class="states">
+      <div class="state-row"><div class="swatch" style="background:var(--leaf)"></div><div class="name">硬</div><div class="meaning">還沒熟，放冷氣房催熟。這時別冰，也不會算賞味期。</div></div>
+      <div class="state-row"><div class="swatch" style="background:var(--ripe)"></div><div class="name">熟</div><div class="meaning">變軟了、開始有香味。室溫大約再放 2 天，建議盡快冰起來。</div></div>
+      <div class="state-row"><div class="swatch" style="background:var(--cold)"></div><div class="name">已冷藏</div><div class="meaning">冰起來定格，大約可放 6 天。快到期時卡片會變紅框提醒。</div></div>
+      <div class="state-row"><div class="swatch" style="background:var(--frozen)"></div><div class="name">已冷凍</div><div class="meaning">切塊冷凍，可放很久。適合太早熟、撐不到目標日的那幾顆。</div></div>
+      <div class="state-row"><div class="swatch" style="background:var(--done)"></div><div class="name">已吃</div><div class="meaning">吃掉了。卡片會變淡，也不再列入食用順序。</div></div>
+    </div>
+  </section>
+
+  <!-- 照片 + 建議 -->
+  <section>
+    <div class="eyebrow">兩個好用功能</div>
+    <h2>照片與食用建議</h2>
+    <div class="duo">
+      <div class="mini">
+        <div class="ic">📷</div>
+        <h3>拍照記錄</h3>
+        <p>每張卡片可以「拍照/上傳」。手機會直接開相機，照片會<strong>自動壓縮</strong>再儲存，不會佔空間也不用擔心檔案太大。點縮圖可看大圖。</p>
+      </div>
+      <div class="mini">
+        <div class="ic">🎯</div>
+        <h3>食用計畫</h3>
+        <p>面板會算出「盡快吃」清單（剩 2 天內）和完整食用順序，還會告訴你目標日當天預估有幾顆可以吃。照著吃最不浪費。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 多個計畫 -->
+  <section>
+    <div class="eyebrow">管理多批</div>
+    <h2>不同批芒果分開管理</h2>
+    <div class="card">
+      <div class="step">
+        <div class="num">⇅</div>
+        <div>
+          <h3>一個計畫 = 一批芒果，用下拉切換</h3>
+          <p>每次採買、或不同品種，就各開一個計畫，互不干擾。最上方的下拉選單會顯示每個計畫的名稱與「已吃 / 總數」，選一個就切到那批的看板；系統會記住你上次看的計畫。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">✎</div>
+        <div>
+          <h3>隨時改設定</h3>
+          <p>切到某個計畫後，直接在設定區改名稱、日期或數量即可，改完自動儲存。數量調多會自動補新的芒果、調少則從編號大的移除。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">✕</div>
+        <div>
+          <h3>吃完就刪掉</h3>
+          <p>整批吃完後，按「刪除此計畫」把它連同芒果與照片一起清掉，清單保持乾淨。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 提醒 -->
+  <section>
+    <div class="eyebrow">小提醒</div>
+    <h2>幾件要記得的事</h2>
+    <div class="remind">
+      <h3>⚠️ 特別注意</h3>
+      <ul>
+        <li>硬芒果<strong>千萬別冰</strong>——會寒害、永遠熟不透、長黑斑。</li>
+        <li>愛文<strong>不耐放</strong>，熟了過幾天就會過熟出斑，變軟就盡快冰。</li>
+        <li>太早熟、怕撐不到目標日的，直接<strong>切塊冷凍</strong>，之後打芒果冰沙很好用。</li>
+        <li>吃之前才洗、冷藏的先回溫一下再吃，風味比較好。</li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="cta">
+    <a class="btn" href="/">開始使用 →</a>
+    <div style="margin-top:12px"><a href="/demo" style="font-size:14px;color:var(--mango-deep)">先看實際畫面示範 →</a></div>
+  </div>
+  <div class="foot">這是使用說明頁。實際操作請點上方按鈕進入主畫面。</div>
+
+</div>
+
+<script>
+  // 純示範用的假資料：讓看說明的人理解狀態切換會如何影響顏色與倒數
+  var demo = {
+    hard:         {label:'硬',    bar:'--leaf',   eat:null, count:'放冷氣房催熟中',      cls:'neutral',
+                   title:'現在是「硬」',    desc:'還沒熟的芒果先放冷氣房催熟，這時候<strong>不要冰</strong>。卡片左邊是綠色，代表催熟中。', alert:false, eaten:false},
+    ripe:         {label:'熟',    bar:'--ripe',   eat:'2 天後', count:'還剩 2 天（室溫）',   cls:'warn',
+                   title:'改成「熟」了',    desc:'變軟、有香味了。室溫大約只能再放 2 天，倒數會提醒你——建議盡快冰起來定格。', alert:true, eaten:false},
+    refrigerated: {label:'已冷藏', bar:'--cold',   eat:'6 天後', count:'還剩 6 天（冷藏）',   cls:'ok',
+                   title:'冰起來了',        desc:'進冰箱後賞味期拉長到約 6 天，左邊變青色。快到期（剩 2 天內）時會變成紅框提醒你。', alert:false, eaten:false},
+    frozen:       {label:'已冷凍', bar:'--frozen', eat:'60 天後', count:'可放很久（冷凍）',   cls:'ok',
+                   title:'切塊冷凍',        desc:'冷凍可以放很久，適合太早熟、撐不到目標日的芒果。之後拿來打冰沙、做甜點都好。', alert:false, eaten:false},
+    eaten:        {label:'已吃',   bar:'--done',   eat:null, count:'完成 ✓',              cls:'neutral',
+                   title:'吃掉了',          desc:'標成「已吃」後卡片會變淡，也不再列入食用順序。整批就是這樣一顆顆消化掉。', alert:false, eaten:true},
+  };
+
+  var sel   = document.getElementById('dsel');
+  var card  = document.getElementById('dcard');
+  var pill  = document.getElementById('dpill');
+  var eat   = document.getElementById('deat');
+  var eatv  = document.getElementById('deatv');
+  var count = document.getElementById('dcount');
+  var title = document.getElementById('dtitle');
+  var desc  = document.getElementById('ddesc');
+
+  function render(key){
+    var s = demo[key];
+    card.style.setProperty('--barcolor', 'var(' + s.bar + ')');
+    pill.textContent = s.label;
+    pill.style.background = 'var(' + s.bar + ')';
+    card.classList.toggle('alert', s.alert);
+    card.classList.toggle('eaten', s.eaten);
+    if(s.eat){ eat.style.display='flex'; eatv.textContent = s.eat; }
+    else { eat.style.display='none'; }
+    count.className = 'dc-count ' + s.cls;
+    count.innerHTML = (s.alert ? '<span class="badge">快到期</span>' : '') + s.count;
+    title.textContent = s.title;
+    desc.innerHTML = s.desc;
+  }
+  sel.addEventListener('change', function(){ render(this.value); });
+  render('hard');
+</script>
+</body>
+</html>

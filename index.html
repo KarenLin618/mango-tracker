@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>芒果催熟排程</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FBFAF3;
+    --panel:#FFFFFF;
+    --ink:#26241E;
+    --muted:#8A8577;
+    --line:#EAE6D9;
+    --mango:#F0803C;      /* 主色：芒果橙 */
+    --mango-deep:#D96520;
+    --leaf:#3E7A4B;       /* 硬（未熟）綠 */
+    --ripe:#E8582C;       /* 熟：紅 */
+    --cold:#1F86A6;       /* 冷藏：青 */
+    --frozen:#6C63C4;     /* 冷凍：紫 */
+    --done:#B4AE9E;       /* 已吃：灰 */
+    --alert:#D62828;      /* 快過期紅 */
+    --alert-bg:#FDECEC;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Noto Sans TC",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;line-height:1.5;
+  }
+  a{color:var(--mango-deep)}
+  .wrap{max-width:1060px;margin:0 auto;padding:24px 18px 80px}
+
+  /* 標頭 */
+  header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand .mk{font-size:38px;line-height:1}
+  h1{font-family:"Noto Serif TC",serif;font-weight:700;font-size:26px;margin:0;letter-spacing:.5px}
+  .sub{color:var(--muted);font-size:13px;margin-top:2px}
+  .saved{font-size:12px;color:var(--leaf);display:flex;align-items:center;gap:5px;transition:opacity .3s;height:18px}
+  .saved.hide{opacity:0}
+  .saved .dot{width:7px;height:7px;border-radius:50%;background:var(--leaf)}
+
+  /* 卡片通用 */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+  .card + .card{margin-top:16px}
+  .card h2{font-family:"Noto Serif TC",serif;font-size:17px;margin:0 0 14px;display:flex;align-items:center;gap:8px}
+  .eyebrow{font-size:11px;letter-spacing:2px;color:var(--mango-deep);font-weight:700;text-transform:uppercase;margin-bottom:2px}
+
+  /* 設定表單 */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+  label.f{display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--muted);font-weight:500}
+  input[type=date],input[type=number],input[type=text],select{
+    font:inherit;font-size:15px;color:var(--ink);padding:9px 11px;border:1px solid var(--line);
+    border-radius:9px;background:#fff;width:100%
+  }
+  input:focus,select:focus{outline:2px solid var(--mango);outline-offset:0;border-color:transparent}
+  .hint{font-size:11px;color:var(--muted);font-weight:400}
+
+  /* 摘要條 */
+  .stats{display:flex;gap:10px;flex-wrap:wrap;margin-top:2px}
+  .stat{flex:1;min-width:92px;border:1px solid var(--line);border-radius:11px;padding:10px 12px;text-align:center;background:#fff}
+  .stat .n{font-family:"Fraunces",serif;font-size:26px;font-weight:600;line-height:1}
+  .stat .l{font-size:12px;color:var(--muted);margin-top:3px}
+  .stat.hard .n{color:var(--leaf)} .stat.ripe .n{color:var(--ripe)}
+  .stat.cold .n{color:var(--cold)} .stat.eaten .n{color:var(--done)}
+
+  /* 建議面板 */
+  .plan-callout{border-left:4px solid var(--mango);background:#FFF6EE;border-radius:0 10px 10px 0;padding:12px 15px;font-size:14px;margin-bottom:14px}
+  .plan-callout b{color:var(--mango-deep)}
+  .plan-list{list-style:none;margin:0;padding:0}
+  .plan-list li{display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px dashed var(--line);font-size:14px}
+  .plan-list li:last-child{border-bottom:0}
+  .rank{width:24px;height:24px;flex:none;border-radius:50%;background:var(--ink);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:"Fraunces",serif}
+  .plan-list .why{color:var(--muted);font-size:12px;margin-left:auto;text-align:right}
+  .empty{color:var(--muted);font-size:14px;padding:6px 2px}
+
+  /* 看板 */
+  .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
+  .mango{border:1px solid var(--line);border-radius:14px;background:#fff;padding:14px;position:relative;overflow:hidden;transition:box-shadow .2s,transform .1s}
+  .mango::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--leaf)}
+  .mango.s-ripe::before{background:var(--ripe)} .mango.s-refrigerated::before{background:var(--cold)}
+  .mango.s-frozen::before{background:var(--frozen)} .mango.s-eaten::before{background:var(--done)}
+  .mango.alert{border-color:var(--alert);box-shadow:0 0 0 1px var(--alert) inset}
+  .mango.s-eaten{opacity:.62}
+  .m-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .m-id{font-family:"Fraunces",serif;font-size:20px;font-weight:600}
+  .m-id .hash{color:var(--muted);font-size:14px}
+  .pill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;color:#fff}
+  .pill.hard{background:var(--leaf)} .pill.ripe{background:var(--ripe)}
+  .pill.refrigerated{background:var(--cold)} .pill.frozen{background:var(--frozen)} .pill.eaten{background:var(--done)}
+  .m-select{width:100%;margin-bottom:8px}
+  .m-dates{font-size:12.5px;color:var(--muted);min-height:38px}
+  .m-dates .row{display:flex;justify-content:space-between;gap:6px;padding:1px 0}
+  .m-dates .row b{color:var(--ink);font-weight:500}
+  .countdown{margin-top:8px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px}
+  .countdown.ok{color:var(--cold)} .countdown.warn{color:var(--alert)} .countdown.neutral{color:var(--muted)}
+  .badge-alert{display:inline-block;background:var(--alert-bg);color:var(--alert);font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px}
+  .m-note{margin-top:8px;width:100%;font-size:12px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;resize:vertical;min-height:0;height:30px;font-family:inherit}
+
+  /* 照片 */
+  .photo-box{margin-bottom:10px}
+  .thumb{width:100%;height:120px;object-fit:cover;border-radius:9px;display:block;cursor:zoom-in;background:#f2efe5}
+  .photo-actions{display:flex;gap:6px;margin-top:6px}
+  .photo-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;font:inherit;font-size:12px;font-weight:500;
+    padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--muted);cursor:pointer;text-align:center}
+  .photo-btn:hover{color:var(--ink);border-color:var(--mango)}
+  .photo-btn.danger:hover{color:var(--alert);border-color:var(--alert)}
+  .photo-empty{display:flex;align-items:center;justify-content:center;width:100%;height:120px;border:1.5px dashed var(--line);
+    border-radius:9px;color:var(--muted);font-size:13px;cursor:pointer;background:#FCFBF6;transition:border-color .15s,color .15s}
+  .photo-empty:hover{border-color:var(--mango);color:var(--mango-deep)}
+  .photo-empty.busy{color:var(--mango-deep);border-color:var(--mango);cursor:progress}
+
+  /* 大圖檢視 */
+  .lightbox{position:fixed;inset:0;background:rgba(20,18,14,.85);display:flex;align-items:center;justify-content:center;
+    z-index:50;padding:20px;cursor:zoom-out}
+  .lightbox img{max-width:100%;max-height:100%;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+
+  /* 按鈕 */
+  .btn{font:inherit;font-size:14px;font-weight:700;border:0;border-radius:10px;padding:10px 18px;cursor:pointer;background:var(--mango);color:#fff;transition:filter .15s}
+  .btn:hover{filter:brightness(1.05)} .btn:active{transform:translateY(1px)}
+  .btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line);font-weight:500}
+  .btn.ghost:hover{color:var(--ink)}
+  .actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+
+  /* 計畫列 */
+  .plan-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px;
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+  .plan-bar .pb-label{font-size:12px;letter-spacing:1px;color:var(--mango-deep);font-weight:700;flex:none}
+  .plan-bar select{flex:1;min-width:160px;font-weight:500}
+  .plan-bar .btn{padding:9px 14px;font-size:13px}
+  .plan-bar .btn.sm-ghost{background:#fff;color:var(--muted);border:1px solid var(--line);font-weight:500}
+  .plan-bar .btn.sm-ghost:hover{color:var(--ink);border-color:var(--mango)}
+  .plan-bar .btn.sm-ghost.danger:hover{color:var(--alert);border-color:var(--alert)}
+
+  /* 空狀態 */
+  .blank{text-align:center;background:var(--panel);border:1px dashed var(--line);border-radius:16px;padding:48px 24px}
+  .blank .mk{font-size:44px}
+  .blank h2{font-family:"Noto Serif TC",serif;margin:12px 0 6px;font-size:20px}
+  .blank p{color:var(--muted);margin:0 0 18px;font-size:14px}
+
+  /* Modal */
+  .modal-mask{position:fixed;inset:0;background:rgba(20,18,14,.5);display:flex;align-items:center;justify-content:center;z-index:60;padding:18px}
+  .modal{background:#fff;border-radius:16px;padding:22px 22px 18px;width:100%;max-width:420px;box-shadow:0 16px 50px rgba(0,0,0,.25)}
+  .modal h3{font-family:"Noto Serif TC",serif;margin:0 0 4px;font-size:19px}
+  .modal .msub{color:var(--muted);font-size:13px;margin:0 0 16px}
+  .modal label.f{margin-bottom:12px}
+  .modal .m-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
+
+  .foot{margin-top:26px;text-align:center;color:var(--muted);font-size:12px;line-height:1.7}
+
+  @media(max-width:520px){
+    .wrap{padding:18px 12px 70px}
+    h1{font-size:22px}.brand .mk{font-size:32px}
+    .board{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+  }
+</style>
+</head>
+<body>
+<div id="app" class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="mk">🥭</div>
+      <div>
+        <h1>芒果催熟排程</h1>
+        <div class="sub">硬別冰 · 熟就冰 · 排出目標日該吃哪幾顆</div>
+      </div>
+    </div>
+    <div class="saved" :class="{hide:!showSaved}"><span class="dot"></span>已儲存</div>
+  </header>
+
+  <div style="margin:-10px 0 18px"><a href="/guide" style="font-size:13px;color:var(--mango-deep);text-decoration:none">📖 第一次使用？看操作說明 →</a></div>
+
+  <!-- 計畫列 -->
+  <div class="plan-bar">
+    <span class="pb-label">排程計畫</span>
+    <select v-if="plans.length" v-model="currentPlanId" @change="switchPlan">
+      <option v-for="p in plans" :key="p.id" :value="p.id">
+        {{ p.name }}（{{ p.eaten }}/{{ p.mango_total }} 已吃）
+      </option>
+    </select>
+    <span v-else style="flex:1;color:var(--muted);font-size:14px">還沒有計畫</span>
+    <button class="btn" @click="openNewPlan">＋ 新增計畫</button>
+    <button v-if="currentPlanId" class="btn sm-ghost danger" @click="deletePlan">刪除此計畫</button>
+  </div>
+
+  <!-- 無計畫空狀態 -->
+  <div class="blank" v-if="!currentPlanId">
+    <div class="mk">🥭</div>
+    <h2>建立第一個排程計畫</h2>
+    <p>每一批芒果（或每次採買）就開一個計畫，分開管理各自的收到日與目標日。</p>
+    <button class="btn" @click="openNewPlan">＋ 新增計畫</button>
+  </div>
+
+  <template v-if="currentPlanId">
+  <!-- 設定 -->
+  <section class="card">
+    <div class="eyebrow">設定</div>
+    <h2>計畫資訊</h2>
+    <div class="grid">
+      <label class="f">計畫名稱
+        <input type="text" v-model="cfg.name" @change="saveConfig" placeholder="例如：7月愛文一箱">
+      </label>
+      <label class="f">收到日
+        <input type="date" v-model="cfg.received_date" @change="saveConfig">
+      </label>
+      <label class="f">目標日（開始吃）
+        <input type="date" v-model="cfg.target_date" @change="saveConfig">
+      </label>
+      <label class="f">數量
+        <input type="number" min="0" max="200" v-model.number="cfg.count" @change="saveConfig">
+      </label>
+      <label class="f">品種
+        <input type="text" v-model="cfg.variety" @change="saveConfig" placeholder="愛文">
+      </label>
+      <label class="f">冷藏可放天數
+        <input type="number" min="1" max="30" v-model.number="cfg.fridge_life_days" @change="saveConfig">
+        <span class="hint">愛文約 5–7 天</span>
+      </label>
+      <label class="f">室溫熟後可放天數
+        <input type="number" min="0" max="14" v-model.number="cfg.room_ripe_life_days" @change="saveConfig">
+        <span class="hint">愛文約 1–2 天</span>
+      </label>
+    </div>
+
+    <div class="stats">
+      <div class="stat hard"><div class="n">{{ counts.hard }}</div><div class="l">硬（催熟中）</div></div>
+      <div class="stat ripe"><div class="n">{{ counts.ripe }}</div><div class="l">熟（待冰）</div></div>
+      <div class="stat cold"><div class="n">{{ counts.refrigerated + counts.frozen }}</div><div class="l">冷藏/冷凍</div></div>
+      <div class="stat eaten"><div class="n">{{ counts.eaten }}</div><div class="l">已吃</div></div>
+    </div>
+  </section>
+
+  <!-- 建議 -->
+  <section class="card" v-if="cfg.received_date">
+    <div class="eyebrow">建議</div>
+    <h2>🎯 食用計畫</h2>
+
+    <div class="plan-callout" v-if="cfg.target_date">
+      目標日 <b>{{ cfg.target_date }}（第 {{ dayIndex(cfg.target_date) }} 天）</b>：
+      屆時預估有 <b>{{ readyByTarget.length }}</b> 顆會在可吃狀態；
+      其中 <b>{{ mustEatByTarget.length }}</b> 顆的最佳賞味會落在目標日當天或之前，要優先安排。
+    </div>
+
+    <div v-if="urgent.length">
+      <div class="hint" style="margin-bottom:6px">⚠️ 盡快吃（今天起 2 天內到期）</div>
+      <ul class="plan-list">
+        <li v-for="(m,i) in urgent" :key="'u'+m.id">
+          <span class="rank" style="background:var(--alert)">{{ i+1 }}</span>
+          <span>#{{ m.seq }} 號　<span :class="'pill '+m.status" style="transform:scale(.85)">{{ statusLabel(m.status) }}</span></span>
+          <span class="why">{{ remainText(m) }}</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="hint" style="margin:14px 0 6px" v-if="orderedPlan.length">建議食用順序（越前面越該先吃）</div>
+    <ul class="plan-list" v-if="orderedPlan.length">
+      <li v-for="(m,i) in orderedPlan" :key="'p'+m.id">
+        <span class="rank">{{ i+1 }}</span>
+        <span>#{{ m.seq }} 號　<span :class="'pill '+m.status" style="transform:scale(.85)">{{ statusLabel(m.status) }}</span></span>
+        <span class="why">{{ bestEatBy(m) ? '最佳賞味 '+bestEatBy(m)+'（'+remainText(m)+'）' : '尚未熟' }}</span>
+      </li>
+    </ul>
+    <div class="empty" v-else>目前沒有已熟或冷藏中的芒果，等有芒果變軟後就會出現食用順序。</div>
+  </section>
+
+  <!-- 看板 -->
+  <section class="card" v-if="mangoes.length">
+    <div class="eyebrow">看板</div>
+    <h2>🥭 每顆狀態</h2>
+    <div class="board">
+      <div v-for="m in mangoes" :key="m.id" class="mango" :class="['s-'+m.status,{alert:isAlert(m)}]">
+        <div class="m-head">
+          <div class="m-id"><span class="hash">#</span>{{ m.seq }}</div>
+          <span :class="'pill '+m.status">{{ statusLabel(m.status) }}</span>
+        </div>
+
+        <!-- 照片 -->
+        <div class="photo-box">
+          <template v-if="m.has_photo">
+            <img class="thumb" :src="photoUrl(m)" @click="viewPhoto(m)" alt="芒果照片">
+            <div class="photo-actions">
+              <label class="photo-btn sm">更換
+                <input type="file" accept="image/*" capture="environment" @change="onPhotoSelect(m,$event)" hidden>
+              </label>
+              <button class="photo-btn sm danger" @click="removePhoto(m)">移除</button>
+            </div>
+          </template>
+          <label v-else class="photo-empty" :class="{busy:m._busy}">
+            <span v-if="m._busy">處理中…</span>
+            <span v-else>📷 拍照 / 上傳</span>
+            <input type="file" accept="image/*" capture="environment" @change="onPhotoSelect(m,$event)" hidden>
+          </label>
+        </div>
+
+        <select class="m-select" v-model="m.status" @change="onStatusChange(m)">
+          <option value="hard">硬（催熟中）</option>
+          <option value="ripe">熟（室溫）</option>
+          <option value="refrigerated">已冷藏</option>
+          <option value="frozen">已冷凍（切塊）</option>
+          <option value="eaten">已吃</option>
+        </select>
+
+        <div class="m-dates">
+          <div class="row" v-if="m.status==='ripe' || m.status==='refrigerated' || m.status==='frozen'">
+            <span>熟成日</span>
+            <b>
+              <input type="date" v-model="m.ripe_date" @change="saveMango(m)"
+                     style="border:0;padding:0;font:inherit;width:auto;text-align:right;color:var(--ink)">
+            </b>
+          </div>
+          <div class="row" v-if="m.status==='refrigerated' || m.status==='frozen'">
+            <span>進冰箱</span>
+            <b>
+              <input type="date" v-model="m.fridge_date" @change="saveMango(m)"
+                     style="border:0;padding:0;font:inherit;width:auto;text-align:right;color:var(--ink)">
+            </b>
+          </div>
+          <div class="row" v-if="bestEatBy(m)"><span>最佳賞味</span><b>{{ bestEatBy(m) }}</b></div>
+        </div>
+
+        <div class="countdown" :class="countdownClass(m)" v-if="remainDays(m)!==null">
+          <span v-if="isAlert(m)" class="badge-alert">快到期</span>
+          {{ remainText(m) }}
+        </div>
+
+        <textarea class="m-note" v-model="m.note" @change="saveMango(m)" placeholder="備註…"></textarea>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn ghost" @click="reset">全部重設為「硬」</button>
+    </div>
+  </section>
+
+  <section class="card" v-else>
+    <div class="empty">請在上方填入「數量」，看板就會出現每一顆芒果。</div>
+  </section>
+  </template>
+
+  <div class="foot">
+    核心原則：硬芒果別冰（會寒害熟不透）→ 變軟就立刻冰起來定格 → 到目標日照食用順序吃。<br>
+    冷藏天數以你設定的值計算；愛文不耐放，太早熟的建議切塊冷凍留到最後。
+  </div>
+
+  <!-- 新增計畫 -->
+  <div class="modal-mask" v-if="showNewModal" @click.self="showNewModal=false">
+    <div class="modal">
+      <h3>新增排程計畫</h3>
+      <p class="msub">先填基本資料，之後都能再修改。</p>
+      <label class="f">計畫名稱
+        <input type="text" v-model="newForm.name" placeholder="例如：7月愛文一箱" @keyup.enter="createPlan">
+      </label>
+      <div class="grid">
+        <label class="f">收到日
+          <input type="date" v-model="newForm.received_date">
+        </label>
+        <label class="f">目標日
+          <input type="date" v-model="newForm.target_date">
+        </label>
+        <label class="f">數量
+          <input type="number" min="0" max="200" v-model.number="newForm.count">
+        </label>
+        <label class="f">品種
+          <input type="text" v-model="newForm.variety" placeholder="愛文">
+        </label>
+      </div>
+      <div class="m-actions">
+        <button class="btn sm-ghost" @click="showNewModal=false">取消</button>
+        <button class="btn" @click="createPlan">建立</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 大圖檢視 -->
+  <div class="lightbox" v-if="lightbox" @click="lightbox=null">
+    <img :src="lightbox" alt="芒果照片">
+  </div>
+</div>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script>
+const { createApp } = Vue;
+
+// 日期工具（一律用本地時區的日曆日）
+function todayISO(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function parse(iso){ if(!iso) return null; const [y,m,d]=iso.split('-').map(Number); return new Date(y,m-1,d); }
+function addDays(iso,n){ const d=parse(iso); if(!d) return null; d.setDate(d.getDate()+n);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function diffDays(aIso,bIso){ const a=parse(aIso),b=parse(bIso); if(!a||!b) return null;
+  return Math.round((b-a)/86400000); }
+
+createApp({
+  data(){
+    return {
+      cfg:{name:'',received_date:'',target_date:'',count:0,fridge_life_days:6,room_ripe_life_days:2,frozen_life_days:60,variety:'愛文'},
+      mangoes:[],
+      plans:[],
+      currentPlanId:null,
+      showNewModal:false,
+      newForm:{name:'',received_date:'',target_date:'',count:0,variety:'愛文'},
+      today: todayISO(),
+      showSaved:false,
+      savedTimer:null,
+      lightbox:null,
+    };
+  },
+  computed:{
+    counts(){
+      const c={hard:0,ripe:0,refrigerated:0,frozen:0,eaten:0};
+      this.mangoes.forEach(m=>{ if(c[m.status]!==undefined) c[m.status]++; });
+      return c;
+    },
+    // 有賞味期、未吃的，依最佳賞味日排序（越早越前）
+    orderedPlan(){
+      return this.mangoes
+        .filter(m=>m.status!=='eaten' && m.status!=='hard' && this.bestEatBy(m))
+        .sort((a,b)=> this.bestEatBy(a).localeCompare(this.bestEatBy(b)));
+    },
+    urgent(){
+      return this.orderedPlan.filter(m=>{ const r=this.remainDays(m); return r!==null && r<=2; });
+    },
+    readyByTarget(){
+      if(!this.cfg.target_date) return [];
+      // 目標日當天仍在可吃狀態：最佳賞味 >= 目標日，或現在已熟/冷藏而尚未過期
+      return this.mangoes.filter(m=>{
+        if(m.status==='eaten') return false;
+        const be=this.bestEatBy(m);
+        if(!be) return false; // 還硬的無法保證
+        return be.localeCompare(this.cfg.target_date) >= 0;
+      });
+    },
+    mustEatByTarget(){
+      if(!this.cfg.target_date) return [];
+      return this.mangoes.filter(m=>{
+        if(m.status==='eaten'||m.status==='hard') return false;
+        const be=this.bestEatBy(m);
+        return be && be.localeCompare(this.cfg.target_date) <= 0;
+      });
+    },
+  },
+  methods:{
+    statusLabel(s){ return {hard:'硬',ripe:'熟',refrigerated:'已冷藏',frozen:'已冷凍',eaten:'已吃'}[s]||s; },
+    dayIndex(iso){ if(!this.cfg.received_date||!iso) return '?'; const d=diffDays(this.cfg.received_date,iso); return d===null?'?':d+1; },
+    bestEatBy(m){
+      const base = (d)=> d || this.today;
+      if(m.status==='ripe')          return addDays(base(m.ripe_date), this.cfg.room_ripe_life_days);
+      if(m.status==='refrigerated')  return addDays(base(m.fridge_date), this.cfg.fridge_life_days);
+      if(m.status==='frozen')        return addDays(base(m.fridge_date), this.cfg.frozen_life_days);
+      return null; // hard / eaten
+    },
+    remainDays(m){ const be=this.bestEatBy(m); if(!be) return null; return diffDays(this.today, be); },
+    remainText(m){
+      const r=this.remainDays(m);
+      if(r===null) return '';
+      if(r<0) return `已過期 ${-r} 天`;
+      if(r===0) return '今天到期';
+      return `還剩 ${r} 天`;
+    },
+    isAlert(m){ const r=this.remainDays(m); return r!==null && r<=2 && (m.status==='ripe'||m.status==='refrigerated'); },
+    countdownClass(m){
+      const r=this.remainDays(m);
+      if(r===null) return 'neutral';
+      if(r<=2) return 'warn';
+      return 'ok';
+    },
+    onStatusChange(m){
+      // 自動帶入日期，省得手動填
+      if(m.status==='ripe' && !m.ripe_date) m.ripe_date=this.today;
+      if((m.status==='refrigerated'||m.status==='frozen')){
+        if(!m.ripe_date) m.ripe_date=this.today;
+        if(!m.fridge_date) m.fridge_date=this.today;
+      }
+      this.saveMango(m);
+    },
+    flashSaved(){
+      this.showSaved=true;
+      clearTimeout(this.savedTimer);
+      this.savedTimer=setTimeout(()=>this.showSaved=false,1500);
+    },
+    norm(m){
+      return {...m, seq:m.seq, ripe_date:m.ripe_date||'', fridge_date:m.fridge_date||'', note:m.note||'',
+              has_photo:!!m.has_photo, _pv:0, _busy:false};
+    },
+    applyState(s){
+      if(s.plan){ for(const k in this.cfg){ if(s.plan[k]!==null&&s.plan[k]!==undefined) this.cfg[k]=s.plan[k]; } }
+      this.mangoes = (s.mangoes||[]).map(m=>this.norm(m));
+    },
+    lastPlanKey(){ return 'mango_last_plan'; },
+    async loadPlans(preferId){
+      try{
+        const r=await fetch('/api/plans'); const d=await r.json();
+        this.plans = d.plans||[];
+        if(!this.plans.length){ this.currentPlanId=null; this.mangoes=[]; return; }
+        // 決定要顯示哪個計畫：優先指定 → localStorage → 第一個
+        let pick = preferId;
+        if(!pick){ try{ pick = parseInt(localStorage.getItem(this.lastPlanKey())); }catch(e){} }
+        if(!this.plans.some(p=>p.id===pick)) pick = this.plans[0].id;
+        await this.loadPlan(pick);
+      }catch(e){ console.error('載入計畫清單失敗',e); }
+    },
+    async loadPlan(id){
+      try{
+        const r=await fetch(`/api/plans/${id}/state`);
+        if(!r.ok) throw new Error('state failed');
+        const s=await r.json();
+        this.currentPlanId = id;
+        try{ localStorage.setItem(this.lastPlanKey(), String(id)); }catch(e){}
+        this.applyState(s);
+      }catch(e){ console.error('載入計畫失敗',e); }
+    },
+    switchPlan(){ if(this.currentPlanId) this.loadPlan(this.currentPlanId); },
+    openNewPlan(){
+      this.newForm={name:'',received_date:this.today,target_date:'',count:0,variety:'愛文'};
+      this.showNewModal=true;
+    },
+    async createPlan(){
+      const body={...this.newForm, name:(this.newForm.name||'').trim()||'未命名計畫',
+                  fridge_life_days:6,room_ripe_life_days:2,frozen_life_days:60};
+      try{
+        const r=await fetch('/api/plans',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        const s=await r.json();
+        this.showNewModal=false;
+        await this.loadPlans(s.plan.id);
+        this.flashSaved();
+      }catch(e){ console.error('新增計畫失敗',e); alert('新增計畫失敗，請再試一次'); }
+    },
+    async deletePlan(){
+      const p=this.plans.find(x=>x.id===this.currentPlanId);
+      if(!p) return;
+      if(!confirm(`刪除計畫「${p.name}」？此計畫的所有芒果與照片都會一併刪除，無法復原。`)) return;
+      try{
+        await fetch(`/api/plans/${this.currentPlanId}`,{method:'DELETE'});
+        this.currentPlanId=null;
+        await this.loadPlans();
+        this.flashSaved();
+      }catch(e){ console.error('刪除計畫失敗',e); }
+    },
+    async saveConfig(){
+      if(!this.currentPlanId) return;
+      try{
+        const r=await fetch(`/api/plans/${this.currentPlanId}`,{method:'PUT',
+          headers:{'Content-Type':'application/json'},body:JSON.stringify(this.cfg)});
+        const s=await r.json();
+        this.applyState(s);
+        // 同步更新清單裡的名稱/數量
+        const p=this.plans.find(x=>x.id===this.currentPlanId);
+        if(p){ p.name=this.cfg.name; p.mango_total=this.mangoes.length; }
+        this.flashSaved();
+      }catch(e){ console.error('存設定失敗',e); }
+    },
+    async saveMango(m){
+      try{
+        await fetch('/api/mango/'+m.id,{method:'PUT',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({status:m.status,ripe_date:m.ripe_date||null,fridge_date:m.fridge_date||null,note:m.note||''})});
+        this.flashSaved();
+      }catch(e){ console.error('存芒果失敗',e); }
+    },
+    async reset(){
+      if(!this.currentPlanId) return;
+      if(!confirm('確定把這個計畫的所有芒果重設為「硬」？（日期、備註、照片都會清空）')) return;
+      try{
+        const r=await fetch(`/api/plans/${this.currentPlanId}/reset`,{method:'POST'});
+        const s=await r.json();
+        this.applyState(s);
+        this.flashSaved();
+      }catch(e){ console.error('重設失敗',e); }
+    },
+
+    // ---------- 照片 ----------
+    photoUrl(m){ return `/api/mango/${m.id}/photo?v=${m._pv||0}`; },
+    viewPhoto(m){ this.lightbox = this.photoUrl(m); },
+    // 前端壓縮：長邊縮到 maxDim、轉 JPEG，處理手機 EXIF 方向
+    async compressImage(file, maxDim=900, quality=0.7){
+      let bitmap;
+      try{ bitmap = await createImageBitmap(file, {imageOrientation:'from-image'}); }
+      catch(e){ bitmap = await new Promise((res,rej)=>{ const img=new Image();
+        img.onload=()=>res(img); img.onerror=rej; img.src=URL.createObjectURL(file); }); }
+      let w = bitmap.width, h = bitmap.height;
+      if(w>h && w>maxDim){ h=Math.round(h*maxDim/w); w=maxDim; }
+      else if(h>=w && h>maxDim){ w=Math.round(w*maxDim/h); h=maxDim; }
+      const canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(bitmap,0,0,w,h);
+      return canvas.toDataURL('image/jpeg', quality); // data URL
+    },
+    async onPhotoSelect(m, ev){
+      const file = ev.target.files && ev.target.files[0];
+      ev.target.value='';           // 讓同一張也能重選
+      if(!file) return;
+      m._busy = true;
+      try{
+        const dataUrl = await this.compressImage(file);
+        const r = await fetch(`/api/mango/${m.id}/photo`,{method:'PUT',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({data:dataUrl, mime:'image/jpeg'})});
+        if(!r.ok) throw new Error('upload failed');
+        m.has_photo = true;
+        m._pv = (m._pv||0) + 1;     // 破快取，換新圖
+        this.flashSaved();
+      }catch(e){ console.error('照片上傳失敗',e); alert('照片上傳失敗，請再試一次'); }
+      finally{ m._busy = false; }
+    },
+    async removePhoto(m){
+      if(!confirm('移除這顆芒果的照片？')) return;
+      try{
+        await fetch(`/api/mango/${m.id}/photo`,{method:'DELETE'});
+        m.has_photo = false; m._pv = (m._pv||0) + 1;
+        this.flashSaved();
+      }catch(e){ console.error('照片移除失敗',e); }
+    },
+  },
+  mounted(){ this.loadPlans(); }
+}).mount('#app');
+</script>
+</body>
+</html>
