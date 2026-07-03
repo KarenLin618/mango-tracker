@@ -102,21 +102,39 @@
 
   /* 照片 */
   .photo-box{margin-bottom:10px}
-  .thumb{width:100%;height:120px;object-fit:cover;border-radius:9px;display:block;cursor:zoom-in;background:#f2efe5}
-  .photo-actions{display:flex;gap:6px;margin-top:6px}
-  .photo-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;font:inherit;font-size:12px;font-weight:500;
-    padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--muted);cursor:pointer;text-align:center;text-decoration:none}
-  .photo-btn:hover{color:var(--ink);border-color:var(--mango)}
-  .photo-btn.danger:hover{color:var(--alert);border-color:var(--alert)}
-  .photo-empty{display:flex;align-items:center;justify-content:center;width:100%;height:120px;border:1.5px dashed var(--line);
+  .thumb{width:100%;height:110px;object-fit:cover;border-radius:9px;display:block;cursor:zoom-in;background:#f2efe5}
+  .photo-strip{display:flex;gap:5px;margin-top:6px}
+  .strip-thumb{flex:1;min-width:0;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer;background:#f2efe5}
+  .strip-more{flex:1;aspect-ratio:1;border-radius:6px;background:#EAE6D9;color:var(--muted);display:flex;
+    align-items:center;justify-content:center;font-size:12px;font-weight:700;cursor:pointer}
+  .strip-add{flex:1;aspect-ratio:1;border:1.5px dashed var(--line);border-radius:6px;display:flex;align-items:center;
+    justify-content:center;color:var(--muted);cursor:pointer;font-size:16px;transition:border-color .15s,color .15s}
+  .strip-add:hover{border-color:var(--mango);color:var(--mango-deep)}
+  .strip-add.busy{cursor:progress;color:var(--mango-deep);border-color:var(--mango)}
+  .strip-add .mini{font-size:12px}
+  .photo-empty{display:flex;align-items:center;justify-content:center;width:100%;height:110px;border:1.5px dashed var(--line);
     border-radius:9px;color:var(--muted);font-size:13px;cursor:pointer;background:#FCFBF6;transition:border-color .15s,color .15s}
   .photo-empty:hover{border-color:var(--mango);color:var(--mango-deep)}
   .photo-empty.busy{color:var(--mango-deep);border-color:var(--mango);cursor:progress}
 
-  /* 大圖檢視 */
-  .lightbox{position:fixed;inset:0;background:rgba(20,18,14,.85);display:flex;align-items:center;justify-content:center;
-    z-index:50;padding:20px;cursor:zoom-out}
-  .lightbox img{max-width:100%;max-height:100%;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+  /* 相簿檢視 */
+  .gallery{position:fixed;inset:0;background:rgba(20,18,14,.9);z-index:50;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:14px;padding:20px}
+  .gclose{position:absolute;top:14px;right:16px;background:0;border:0;color:#fff;font-size:24px;cursor:pointer;line-height:1}
+  .gallery-stage{position:relative;display:flex;align-items:center;justify-content:center;width:100%;max-width:540px}
+  .gallery-img{max-width:100%;max-height:62vh;border-radius:12px;object-fit:contain;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+  .gnav{position:absolute;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.92);border:0;
+    display:flex;align-items:center;justify-content:center;font-size:24px;line-height:1;cursor:pointer;color:#26241E}
+  .gnav.prev{left:6px} .gnav.next{right:6px}
+  .gcount{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:rgba(20,18,14,.6);color:#fff;
+    font-size:13px;padding:2px 12px;border-radius:20px}
+  .gdots{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:90%}
+  .gdot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.45);cursor:pointer}
+  .gdot.on{background:#fff}
+  .gbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  .gbtn{font:inherit;font-size:14px;font-weight:700;border:0;border-radius:10px;padding:10px 18px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
+  .gbtn.ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4)}
+  .gbtn.primary{background:var(--mango);color:#fff}
 
   /* 按鈕 */
   .btn{font:inherit;font-size:14px;font-weight:700;border:0;border-radius:10px;padding:10px 18px;cursor:pointer;background:var(--mango);color:#fff;transition:filter .15s}
@@ -288,20 +306,23 @@
 
         <!-- 照片 -->
         <div class="photo-box">
-          <template v-if="m.has_photo">
-            <img class="thumb" :src="photoUrl(m)" @click="viewPhoto(m)" alt="芒果照片">
-            <div class="photo-actions">
-              <a class="photo-btn sm" :href="downloadUrl(m)" :download="downloadName(m)">下載</a>
-              <label class="photo-btn sm">更換
-                <input type="file" accept="image/*" @change="onPhotoSelect(m,$event)" hidden>
+          <template v-if="m.photos.length">
+            <img class="thumb" :key="'c'+coverId(m)+'-'+m._pv" :src="photoUrl(m, coverId(m))"
+                 @click="openGallery(m, m.photos.length-1)" alt="芒果照片">
+            <div class="photo-strip">
+              <img v-for="(pid,i) in stripIds(m)" :key="pid+'-'+m._pv" class="strip-thumb"
+                   :src="photoUrl(m, pid)" @click="openGallery(m, i)" alt="">
+              <div v-if="moreCount(m)>0" class="strip-more" @click="openGallery(m, 3)">+{{ moreCount(m) }}</div>
+              <label class="strip-add" :class="{busy:m._busy}" title="加照片">
+                <span v-if="m._busy" class="mini">…</span><span v-else>＋</span>
+                <input type="file" accept="image/*" @change="onAddPhoto(m,$event)" hidden>
               </label>
-              <button class="photo-btn sm danger" @click="removePhoto(m)">移除</button>
             </div>
           </template>
           <label v-else class="photo-empty" :class="{busy:m._busy}">
             <span v-if="m._busy">處理中…</span>
             <span v-else>📷 拍照 / 上傳</span>
-            <input type="file" accept="image/*" @change="onPhotoSelect(m,$event)" hidden>
+            <input type="file" accept="image/*" @change="onAddPhoto(m,$event)" hidden>
           </label>
         </div>
 
@@ -384,9 +405,26 @@
     </div>
   </div>
 
-  <!-- 大圖檢視 -->
-  <div class="lightbox" v-if="lightbox" @click="lightbox=null">
-    <img :src="lightbox" alt="芒果照片">
+  <!-- 相簿檢視 -->
+  <div class="gallery" v-if="gallery">
+    <button class="gclose" @click="gallery=null" aria-label="關閉">✕</button>
+    <div class="gallery-stage">
+      <button v-if="gallery.mango.photos.length>1" class="gnav prev" @click="galPrev" aria-label="上一張">‹</button>
+      <img class="gallery-img" :key="galId()+'-'+gallery.mango._pv" :src="photoUrl(gallery.mango, galId())" alt="芒果照片">
+      <button v-if="gallery.mango.photos.length>1" class="gnav next" @click="galNext" aria-label="下一張">›</button>
+      <div class="gcount">{{ gallery.index+1 }} / {{ gallery.mango.photos.length }}</div>
+    </div>
+    <div class="gdots" v-if="gallery.mango.photos.length>1">
+      <span v-for="(pid,i) in gallery.mango.photos" :key="pid" class="gdot" :class="{on:i===gallery.index}" @click="gallery.index=i"></span>
+    </div>
+    <div class="gbar">
+      <a class="gbtn ghost" :href="downloadUrl(gallery.mango, galId())" :download="galName()">下載</a>
+      <button class="gbtn ghost" @click="galRemove">移除這張</button>
+      <label class="gbtn primary" :class="{busy:gallery.mango._busy}">
+        <span v-if="gallery.mango._busy">處理中…</span><span v-else>＋ 加照片</span>
+        <input type="file" accept="image/*" @change="onAddPhoto(gallery.mango,$event,true)" hidden>
+      </label>
+    </div>
   </div>
 </div>
 
@@ -402,13 +440,21 @@ function addDays(iso,n){ const d=parse(iso); if(!d) return null; d.setDate(d.get
 function diffDays(aIso,bIso){ const a=parse(aIso),b=parse(bIso); if(!a||!b) return null;
   return Math.round((b-a)/86400000); }
 
-// 內嵌一張示範芒果圖（SVG data URL，不需外部檔案）
-const SAMPLE_PHOTO = 'data:image/svg+xml;utf8,' + encodeURIComponent(
-  '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200">' +
-  '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">' +
-  '<stop offset="0" stop-color="#F6B24A"/><stop offset="1" stop-color="#E8582C"/></linearGradient></defs>' +
-  '<rect width="300" height="200" fill="url(#g)"/>' +
-  '<text x="150" y="128" font-size="96" text-anchor="middle">\U0001F96D</text></svg>');
+// 內嵌示範芒果圖（SVG data URL，不需外部檔案）；用不同顏色代表熟成過程
+function mkPhoto(c1, c2, label){
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200">' +
+    '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">' +
+    '<stop offset="0" stop-color="'+c1+'"/><stop offset="1" stop-color="'+c2+'"/></linearGradient></defs>' +
+    '<rect width="300" height="200" fill="url(#g)"/>' +
+    '<text x="150" y="120" font-size="80" text-anchor="middle">\U0001F96D</text>' +
+    '<text x="150" y="176" font-size="24" fill="#ffffff" text-anchor="middle" font-family="sans-serif">'+label+'</text></svg>');
+}
+const SAMPLE_PHOTOS = [
+  mkPhoto('#7FB26A', '#3E7A4B', '第1天 硬'),
+  mkPhoto('#F6B24A', '#E8582C', '第5天 轉色'),
+  mkPhoto('#E8582C', '#993C1D', '第8天 熟'),
+];
 
 function seedStore(){
   return {
@@ -419,12 +465,12 @@ function seedStore(){
       1:{plan:{id:1,name:'7月愛文一箱',received_date:'2026-07-02',target_date:'2026-07-17',count:6,
                fridge_life_days:6,room_ripe_life_days:2,frozen_life_days:60,variety:'愛文'},
          mangoes:[
-           {id:101,seq:1,status:'ripe',        ripe_date:'2026-07-11',fridge_date:'',          note:'',                has_photo:true, _photoData:SAMPLE_PHOTO,_pv:0,_busy:false},
-           {id:102,seq:2,status:'refrigerated',ripe_date:'2026-07-10',fridge_date:'2026-07-10',note:'',                has_photo:false,_photoData:'',         _pv:0,_busy:false},
-           {id:103,seq:3,status:'hard',        ripe_date:'',          fridge_date:'',          note:'',                has_photo:false,_photoData:'',         _pv:0,_busy:false},
-           {id:104,seq:4,status:'hard',        ripe_date:'',          fridge_date:'',          note:'蒂頭開始有香味',    has_photo:false,_photoData:'',         _pv:0,_busy:false},
-           {id:105,seq:5,status:'eaten',       ripe_date:'2026-07-08',fridge_date:'2026-07-08',note:'',                has_photo:false,_photoData:'',         _pv:0,_busy:false},
-           {id:106,seq:6,status:'frozen',      ripe_date:'2026-07-05',fridge_date:'2026-07-05',note:'太早熟，冷凍留著打冰沙',has_photo:false,_photoData:'',    _pv:0,_busy:false},
+           {id:101,seq:1,status:'ripe',        ripe_date:'2026-07-11',fridge_date:'',          note:'',                photos:SAMPLE_PHOTOS.slice(),_pv:0,_busy:false},
+           {id:102,seq:2,status:'refrigerated',ripe_date:'2026-07-10',fridge_date:'2026-07-10',note:'',                photos:[SAMPLE_PHOTOS[2]],   _pv:0,_busy:false},
+           {id:103,seq:3,status:'hard',        ripe_date:'',          fridge_date:'',          note:'',                photos:[],                   _pv:0,_busy:false},
+           {id:104,seq:4,status:'hard',        ripe_date:'',          fridge_date:'',          note:'蒂頭開始有香味',    photos:[],                   _pv:0,_busy:false},
+           {id:105,seq:5,status:'eaten',       ripe_date:'2026-07-08',fridge_date:'2026-07-08',note:'',                photos:[],                   _pv:0,_busy:false},
+           {id:106,seq:6,status:'frozen',      ripe_date:'2026-07-05',fridge_date:'2026-07-05',note:'太早熟，冷凍留著打冰沙',photos:[],               _pv:0,_busy:false},
          ]},
     },
     nextPlanId:2, nextMangoId:300,
@@ -439,7 +485,7 @@ createApp({
       mangoes:[], plans:[], currentPlanId:null,
       showNewModal:false,
       newForm:{name:'',received_date:'',target_date:'',count:0,variety:'愛文'},
-      today: todayISO(), showSaved:false, savedTimer:null, lightbox:null,
+      today: todayISO(), showSaved:false, savedTimer:null, gallery:null,
     };
   },
   computed:{
@@ -477,7 +523,7 @@ createApp({
     flashSaved(){ this.showSaved=true; clearTimeout(this.savedTimer); this.savedTimer=setTimeout(()=>this.showSaved=false,1500); },
 
     // ---- 資料存取（示範模式：只改記憶體，不打 API）----
-    blankMango(seq){ return {id:this.store.nextMangoId++,seq,status:'hard',ripe_date:'',fridge_date:'',note:'',has_photo:false,_photoData:'',_pv:0,_busy:false}; },
+    blankMango(seq){ return {id:this.store.nextMangoId++,seq,status:'hard',ripe_date:'',fridge_date:'',note:'',photos:[],_pv:0,_busy:false}; },
     loadPlans(preferId){
       this.plans = this.store.plans;
       if(!this.plans.length){ this.currentPlanId=null; this.mangoes=[]; return; }
@@ -508,7 +554,7 @@ createApp({
     },
     reset(){
       if(!confirm('確定把這個計畫的所有芒果重設為「硬」？（示範模式，僅影響目前畫面）')) return;
-      this.mangoes.forEach(m=>{ m.status='hard'; m.ripe_date=''; m.fridge_date=''; m.note=''; m.has_photo=false; m._photoData=''; });
+      this.mangoes.forEach(m=>{ m.status='hard'; m.ripe_date=''; m.fridge_date=''; m.note=''; m.photos=[]; });
       const p=this.plans.find(x=>x.id===this.currentPlanId); if(p) p.eaten=0;
       this.flashSaved();
     },
@@ -532,11 +578,25 @@ createApp({
       this.currentPlanId=null; this.loadPlans(); this.flashSaved();
     },
 
-    // ---- 照片（示範模式：讀進記憶體，不上傳）----
-    photoUrl(m){ return m._photoData||''; },
-    downloadUrl(m){ return m._photoData||''; },
-    downloadName(m){ return `mango-${m.seq}.jpg`; },
-    viewPhoto(m){ this.lightbox=this.photoUrl(m); },
+    // ---- 照片（示範模式：讀進記憶體，photos 存 data URL）----
+    coverId(m){ return m.photos.length ? m.photos[m.photos.length-1] : null; },
+    stripIds(m){ return m.photos.length <= 4 ? m.photos : m.photos.slice(0,3); },
+    moreCount(m){ return m.photos.length <= 4 ? 0 : m.photos.length-3; },
+    photoUrl(m, pid){ return pid || ''; },       // 示範模式：pid 本身就是 data URL
+    downloadUrl(m, pid){ return pid || ''; },
+    openGallery(m, i){ if(!m.photos.length) return; this.gallery={mango:m, index:Math.min(i, m.photos.length-1)}; },
+    galId(){ return this.gallery.mango.photos[this.gallery.index]; },
+    galName(){ return `mango-${this.gallery.mango.seq}-${this.gallery.index+1}.jpg`; },
+    galPrev(){ const n=this.gallery.mango.photos.length; this.gallery.index=(this.gallery.index-1+n)%n; },
+    galNext(){ const n=this.gallery.mango.photos.length; this.gallery.index=(this.gallery.index+1)%n; },
+    galRemove(){
+      const m=this.gallery.mango;
+      if(!confirm('移除這張照片？（示範模式）')) return;
+      m.photos.splice(this.gallery.index,1); m._pv=(m._pv||0)+1;
+      if(!m.photos.length){ this.gallery=null; }
+      else{ this.gallery.index=Math.min(this.gallery.index, m.photos.length-1); }
+      this.flashSaved();
+    },
     async compressImage(file, maxDim=900, quality=0.7){
       let bitmap;
       try{ bitmap = await createImageBitmap(file, {imageOrientation:'from-image'}); }
@@ -549,14 +609,14 @@ createApp({
       canvas.getContext('2d').drawImage(bitmap,0,0,w,h);
       return canvas.toDataURL('image/jpeg', quality);
     },
-    async onPhotoSelect(m, ev){
+    async onAddPhoto(m, ev, fromGallery){
       const file=ev.target.files&&ev.target.files[0]; ev.target.value=''; if(!file) return;
       m._busy=true;
-      try{ m._photoData=await this.compressImage(file); m.has_photo=true; this.flashSaved(); }
+      try{ m.photos.push(await this.compressImage(file)); m._pv=(m._pv||0)+1;
+           if(fromGallery) this.gallery.index=m.photos.length-1; this.flashSaved(); }
       catch(e){ console.error(e); alert('讀取照片失敗，請再試一次'); }
       finally{ m._busy=false; }
     },
-    removePhoto(m){ if(!confirm('移除這顆芒果的照片？（示範模式）')) return; m._photoData=''; m.has_photo=false; this.flashSaved(); },
   },
   mounted(){ this.loadPlans(1); }
 }).mount('#app');

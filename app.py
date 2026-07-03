@@ -102,6 +102,14 @@ def init_db():
                 photo       BYTEA,
                 photo_mime  TEXT
             )""")
+        execute(conn, """
+            CREATE TABLE IF NOT EXISTS photo (
+                id       SERIAL PRIMARY KEY,
+                mango_id INTEGER NOT NULL REFERENCES mango(id) ON DELETE CASCADE,
+                seq      INTEGER NOT NULL,
+                data     BYTEA NOT NULL,
+                mime     TEXT
+            )""")
     else:
         execute(conn, """
             CREATE TABLE IF NOT EXISTS plan (
@@ -127,7 +135,23 @@ def init_db():
                 photo       BLOB,
                 photo_mime  TEXT
             )""")
+        execute(conn, """
+            CREATE TABLE IF NOT EXISTS photo (
+                id       INTEGER PRIMARY KEY AUTOINCREMENT,
+                mango_id INTEGER NOT NULL REFERENCES mango(id) ON DELETE CASCADE,
+                seq      INTEGER NOT NULL,
+                data     BLOB NOT NULL,
+                mime     TEXT
+            )""")
     conn.commit()
+    # 一次性搬移：把舊版的單張照片（mango.photo）移進新的 photo 表，然後清空來源避免重複搬移
+    legacy = q_all(conn, "SELECT id, photo, photo_mime FROM mango WHERE photo IS NOT NULL")
+    for m in legacy:
+        execute(conn, "INSERT INTO photo (mango_id, seq, data, mime) VALUES (%s, 1, %s, %s)",
+                (m["id"], db_binary(bytes(m["photo"])), m["photo_mime"] or "image/jpeg"))
+    if legacy:
+        execute(conn, "UPDATE mango SET photo=NULL, photo_mime=NULL WHERE photo IS NOT NULL")
+        conn.commit()
     conn.close()
 
 
@@ -164,6 +188,8 @@ def sync_mango_count(conn, plan_id, count):
                     "INSERT INTO mango (plan_id, seq, status) VALUES (%s, %s, 'hard')",
                     (plan_id, s))
     elif count < current:
+        execute(conn, "DELETE FROM photo WHERE mango_id IN "
+                      "(SELECT id FROM mango WHERE plan_id = %s AND seq > %s)", (plan_id, count))
         execute(conn, "DELETE FROM mango WHERE plan_id = %s AND seq > %s", (plan_id, count))
 
 
@@ -172,9 +198,18 @@ def read_plan_state(conn, plan_id):
     if plan is None:
         return None
     mangoes = q_all(conn,
-        "SELECT id, plan_id, seq, status, ripe_date, fridge_date, note, "
-        "(photo IS NOT NULL) AS has_photo FROM mango WHERE plan_id = %s ORDER BY seq",
-        (plan_id,))
+        "SELECT id, plan_id, seq, status, ripe_date, fridge_date, note "
+        "FROM mango WHERE plan_id = %s ORDER BY seq", (plan_id,))
+    # 一次撈出這個計畫所有芒果的照片 id，依 seq 排好再分組掛到各芒果上
+    photos = q_all(conn,
+        "SELECT ph.id, ph.mango_id FROM photo ph "
+        "JOIN mango m ON ph.mango_id = m.id "
+        "WHERE m.plan_id = %s ORDER BY ph.mango_id, ph.seq", (plan_id,))
+    by_mango = {}
+    for ph in photos:
+        by_mango.setdefault(ph["mango_id"], []).append(ph["id"])
+    for m in mangoes:
+        m["photos"] = by_mango.get(m["id"], [])
     return {"plan": plan, "mangoes": mangoes}
 
 
@@ -246,6 +281,7 @@ def api_plan_update(plan_id):
 @app.route("/api/plans/<int:plan_id>", methods=["DELETE"])
 def api_plan_delete(plan_id):
     conn = get_conn()
+    execute(conn, "DELETE FROM photo WHERE mango_id IN (SELECT id FROM mango WHERE plan_id = %s)", (plan_id,))
     execute(conn, "DELETE FROM mango WHERE plan_id = %s", (plan_id,))  # 保險：不依賴 cascade
     execute(conn, "DELETE FROM plan WHERE id = %s", (plan_id,))
     conn.commit()
@@ -256,9 +292,10 @@ def api_plan_delete(plan_id):
 @app.route("/api/plans/<int:plan_id>/reset", methods=["POST"])
 def api_plan_reset(plan_id):
     conn = get_conn()
+    execute(conn, "DELETE FROM photo WHERE mango_id IN (SELECT id FROM mango WHERE plan_id = %s)", (plan_id,))
     execute(conn,
-        "UPDATE mango SET status='hard', ripe_date=NULL, fridge_date=NULL, "
-        "note='', photo=NULL, photo_mime=NULL WHERE plan_id=%s", (plan_id,))
+        "UPDATE mango SET status='hard', ripe_date=NULL, fridge_date=NULL, note='' "
+        "WHERE plan_id=%s", (plan_id,))
     conn.commit()
     state = read_plan_state(conn, plan_id)
     conn.close()
@@ -282,34 +319,17 @@ def api_mango(mango_id):
          d.get("fridge_date") or None, d.get("note", "") or "", mango_id))
     conn.commit()
     row = q_one(conn,
-        "SELECT id, plan_id, seq, status, ripe_date, fridge_date, note, "
-        "(photo IS NOT NULL) AS has_photo FROM mango WHERE id = %s", (mango_id,))
+        "SELECT id, plan_id, seq, status, ripe_date, fridge_date, note "
+        "FROM mango WHERE id = %s", (mango_id,))
+    photos = q_all(conn, "SELECT id FROM photo WHERE mango_id = %s ORDER BY seq", (mango_id,))
+    row["photos"] = [p["id"] for p in photos]
     conn.close()
     return jsonify(row)
 
 
-# ---------- 照片 API ----------
-@app.route("/api/mango/<int:mango_id>/photo", methods=["GET"])
-def api_photo_get(mango_id):
-    conn = get_conn()
-    row = q_one(conn, "SELECT seq, photo, photo_mime FROM mango WHERE id = %s", (mango_id,))
-    conn.close()
-    if row is None or row["photo"] is None:
-        return "", 404
-    data = bytes(row["photo"])  # sqlite 回 bytes、psycopg2 回 memoryview，都轉成 bytes
-    mime = row["photo_mime"] or "image/jpeg"
-    resp = Response(data, mimetype=mime)
-    # 不長期快取：更換照片後（含重新整理）都要拿到最新的圖，不會顯示舊照片
-    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    # 帶 ?dl=1 時，要求瀏覽器下載（手機才會存到「檔案」而非只開圖）
-    if request.args.get("dl"):
-        ext = "png" if "png" in mime else "jpg"
-        resp.headers["Content-Disposition"] = f'attachment; filename="mango-{row["seq"]}.{ext}"'
-    return resp
-
-
-@app.route("/api/mango/<int:mango_id>/photo", methods=["PUT"])
-def api_photo_put(mango_id):
+# ---------- 照片 API（一顆芒果多張）----------
+@app.route("/api/mango/<int:mango_id>/photos", methods=["POST"])
+def api_photo_add(mango_id):
     d = request.get_json(force=True) or {}
     data = d.get("data", "")
     mime = d.get("mime", "image/jpeg")
@@ -324,20 +344,46 @@ def api_photo_put(mango_id):
     if exists is None:
         conn.close()
         return jsonify({"error": "not found"}), 404
-    execute(conn, "UPDATE mango SET photo=%s, photo_mime=%s WHERE id=%s",
-            (db_binary(raw), mime, mango_id))
+    nxt = q_one(conn, "SELECT COALESCE(MAX(seq), 0) + 1 AS s FROM photo WHERE mango_id = %s", (mango_id,))
+    seq = nxt["s"]
+    sql = "INSERT INTO photo (mango_id, seq, data, mime) VALUES (%s, %s, %s, %s)"
+    params = (mango_id, seq, db_binary(raw), mime)
+    if IS_PG:
+        new = q_one(conn, sql + " RETURNING id", params)
+        photo_id = new["id"]
+    else:
+        cur = conn.cursor()
+        cur.execute(_adapt(sql), params)
+        photo_id = cur.lastrowid
     conn.commit()
     conn.close()
-    return jsonify({"id": mango_id, "has_photo": True, "bytes": len(raw)})
+    return jsonify({"id": photo_id, "seq": seq}), 201
 
 
-@app.route("/api/mango/<int:mango_id>/photo", methods=["DELETE"])
-def api_photo_delete(mango_id):
+@app.route("/api/photo/<int:photo_id>", methods=["GET"])
+def api_photo_get(photo_id):
     conn = get_conn()
-    execute(conn, "UPDATE mango SET photo=NULL, photo_mime=NULL WHERE id=%s", (mango_id,))
+    row = q_one(conn, "SELECT data, mime FROM photo WHERE id = %s", (photo_id,))
+    conn.close()
+    if row is None:
+        return "", 404
+    data = bytes(row["data"])  # sqlite 回 bytes、psycopg2 回 memoryview，都轉成 bytes
+    mime = row["mime"] or "image/jpeg"
+    resp = Response(data, mimetype=mime)
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    if request.args.get("dl"):
+        ext = "png" if "png" in mime else "jpg"
+        resp.headers["Content-Disposition"] = f'attachment; filename="mango-photo-{photo_id}.{ext}"'
+    return resp
+
+
+@app.route("/api/photo/<int:photo_id>", methods=["DELETE"])
+def api_photo_delete(photo_id):
+    conn = get_conn()
+    execute(conn, "DELETE FROM photo WHERE id = %s", (photo_id,))
     conn.commit()
     conn.close()
-    return jsonify({"id": mango_id, "has_photo": False})
+    return jsonify({"ok": True, "id": photo_id})
 
 
 # ---------- 前端 ----------
