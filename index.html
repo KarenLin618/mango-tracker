@@ -487,7 +487,7 @@ createApp({
     },
     norm(m){
       return {...m, seq:m.seq, ripe_date:m.ripe_date||'', fridge_date:m.fridge_date||'', note:m.note||'',
-              has_photo:!!m.has_photo, _pv:0, _busy:false};
+              has_photo:!!m.has_photo, _pv:Date.now(), _busy:false};
     },
     applyState(s){
       if(s.plan){ for(const k in this.cfg){ if(s.plan[k]!==null&&s.plan[k]!==undefined) this.cfg[k]=s.plan[k]; } }
@@ -604,7 +604,7 @@ createApp({
           body:JSON.stringify({data:dataUrl, mime:'image/jpeg'})});
         if(!r.ok) throw new Error('upload failed');
         m.has_photo = true;
-        m._pv = (m._pv||0) + 1;     // 破快取，換新圖
+        m._pv = Date.now();     // 用時間戳當版本，保證是全新網址、繞過舊快取
         this.flashSaved();
       }catch(e){ console.error('照片上傳失敗',e); alert('照片上傳失敗，請再試一次'); }
       finally{ m._busy = false; }
@@ -613,7 +613,7 @@ createApp({
       if(!confirm('移除這顆芒果的照片？')) return;
       try{
         await fetch(`/api/mango/${m.id}/photo`,{method:'DELETE'});
-        m.has_photo = false; m._pv = (m._pv||0) + 1;
+        m.has_photo = false; m._pv = Date.now();
         this.flashSaved();
       }catch(e){ console.error('照片移除失敗',e); }
     },

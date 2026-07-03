@@ -23,6 +23,14 @@ app = Flask(__name__, static_folder=None)
 app.config["MAX_CONTENT_LENGTH"] = 12 * 1024 * 1024  # 照片已在前端壓縮，上限給寬一點
 
 
+@app.after_request
+def _no_cache_html(resp):
+    # HTML 頁面不快取，確保部署後使用者一定載到最新的程式（避免舊 JS 造成照片更新失效）
+    if resp.mimetype == "text/html":
+        resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return resp
+
+
 # ---------- 資料庫抽象層（同時支援 Postgres 與 SQLite）----------
 def get_conn():
     if IS_PG:
