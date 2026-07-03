@@ -291,7 +291,8 @@ def api_photo_get(mango_id):
     data = bytes(row["photo"])  # sqlite 回 bytes、psycopg2 回 memoryview，都轉成 bytes
     mime = row["photo_mime"] or "image/jpeg"
     resp = Response(data, mimetype=mime)
-    resp.headers["Cache-Control"] = "public, max-age=31536000"
+    # 不長期快取：更換照片後（含重新整理）都要拿到最新的圖，不會顯示舊照片
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     # 帶 ?dl=1 時，要求瀏覽器下載（手機才會存到「檔案」而非只開圖）
     if request.args.get("dl"):
         ext = "png" if "png" in mime else "jpg"

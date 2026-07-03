@@ -281,7 +281,7 @@
         <!-- 照片 -->
         <div class="photo-box">
           <template v-if="m.has_photo">
-            <img class="thumb" :src="photoUrl(m)" @click="viewPhoto(m)" alt="芒果照片">
+            <img class="thumb" :key="m._pv" :src="photoUrl(m)" @click="viewPhoto(m)" alt="芒果照片">
             <div class="photo-actions">
               <a class="photo-btn sm" :href="downloadUrl(m)" :download="downloadName(m)">下載</a>
               <label class="photo-btn sm">更換
